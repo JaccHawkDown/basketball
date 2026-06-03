@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Be The Coach - Basketball</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f7;
+            --card-bg: #ffffff;
+            --text-main: #1c1c1e;
+            --text-muted: #8e8e93;
+            --accent-color: #ff9500; /* Basketball Amber */
+            --green: #34c759;
+            --red: #ff3b30;
+            --blue: #007aff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 1. Scoreboard Header */
+        .scoreboard {
+            background-color: #111;
+            color: #fff;
+            padding: 16px;
+            padding-top: max(16px, env(safe-area-inset-top));
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .sb-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: monospace;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .timer {
+            color: var(--accent-color);
+            font-weight: bold;
+            font-size: 1.4rem;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            background: #444;
+        }
+        .status-badge.live { background: var(--red); }
+
+        .sb-teams {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .team-box {
+            flex: 1;
+        }
+        .team-box.away { text-align: right; }
+
+        .team-name {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .team-score {
+            font-family: monospace;
+            font-size: 2.5rem;
+            font-weight: 900;
+        }
+
+        .vs-divider {
+            color: #444;
+            font-size: 0.8rem;
+            padding: 0 10px;
+            margin-top: 15px;
+        }
+
+        /* 2. Roster Ribbon */
+        .roster-ribbon {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 12px 16px;
+            background: #e5e5ea;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .roster-ribbon::-webkit-scrollbar { display: none; }
+
+        .player-card {
+            background: var(--card-bg);
+            padding: 8px 12px;
+            border-radius: 8px;
+            min-width: 130px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+        }
+
+        .player-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .pos-tag {
+            font-size: 0.65rem;
+            font-weight: bold;
+            background: rgba(0,122,255,0.1);
+            color: var(--blue);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .player-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .player-stats {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 6px;
+        }
+
+        /* 3. Commentary Feed */
+        .feed-container {
+            flex: 1;
+            overflow-y: auto;
+            background: #f2f2f7;
+            padding: 16px;
+            display: flex;
+            flex-direction: column-reverse; /* Keeps newest logs at top nicely */
+        }
+
+        .log-entry {
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+            line-height: 1.4;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 4. Strategy Toggles */
+        .controls-section {
+            background: var(--card-bg);
+            padding: 16px;
+            border-top: 1px solid #e5e5ea;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .strat-btn {
+            background: #f2f2f7;
+            border: 2px solid transparent;
+            color: var(--text-main);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+
+        .strat-btn.active {
+            background: rgba(0,122,255,0.1);
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+
+        /* 5. Master Action Triggers */
+        .action-row {
+            display: flex;
+            gap: 12px;
+            padding-bottom: max(0px, env(safe-area-inset-bottom));
+        }
+
+        .btn-main {
+            flex: 1;
+            border: none;
+            color: white;
+            padding: 16px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-run { background-color: var(--green); }
+        .btn-run.active { background-color: var(--accent-color); }
+        .btn-reset {
+            background-color: rgba(255,59,48,0.1);
+            color: var(--red);
+            width: 60px;
+            flex-grow: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scoreboard">
+        <div class="sb-meta">
+            <span id="quarter-disp">Q1</span>
+            <span class="timer" id="time-disp">12:00</span>
+            <span class="status-badge" id="status-disp">PAUSED</span>
+        </div>
+        <div class="sb-teams">
+            <div class="team-box">
+                <div class="team-name">Home Stars</div>
+                <div class="team-score" id="home-score">0</div>
+            </div>
+            <div class="vs-divider">VS</div>
+            <div class="team-box away">
+                <div class="team-name">Away Rivals</div>
+                <div class="team-score" id="away-score">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="roster-ribbon" id="roster-container">
+        </div>
+
+    <div class="feed-container" id="feed-container">
+        <div class="log-entry">Welcome Coach. Set your strategy and tip off!</div>
+    </div>
+
+    <div class="controls-section">
+        <div class="section-label">Coach's Orders</div>
+        <div class="strategy-grid">
+            <button class="strat-btn active" onclick="setStrategy('balanced', this)">Balanced</button>
+            <button class="strat-btn" onclick="setStrategy('fastBreak', this)">Fast Break</button>
+            <button class="strat-btn" onclick="setStrategy('paint Focus', this)">Pound Paint</button>
+            <button class="strat-btn" onclick="setStrategy('lockdown', this)">Lockdown Def</button>
+        </div>
+
+        <div class="action-row">
+            <button class="btn-main btn-reset" onclick="resetGame()">↺</button>
+            <button class="btn-main btn-run" id="sim-btn" onclick="toggleSimulation()">RUN SIMULATION</button>
+        </div>
+    </div>
+
+    <script>
+        // Game State Variables
+        let state = {
+            homeScore: 0,
+            awayScore: 0,
+            quarter: 1,
+            timeRemaining: 720, // 12 mins in seconds
+            isGameActive: false,
+            currentStrategy: 'balanced',
+            oppRating: 8.0
+        };
+
+        const roster = [
+            { name: "J. Smart", pos: "PG", off: 8.5, def: 7.0 },
+            { name: "M. Miller", pos: "SG", off: 9.0, def: 6.5 },
+            { name: "K. Durant", pos: "SF", off: 9.5, def: 8.0 },
+            { name: "D. Green", pos: "PF", off: 6.0, def: 9.5 },
+            { name: "N. Jokic", pos: "C", off: 9.8, def: 7.5 }
+        ];
+
+        let simInterval = null;
+
+        // Render Roster on load
+        function renderRoster() {
+            const container = document.getElementById('roster-container');
+            container.innerHTML = roster.map(p => `
+                <div class="player-card">
+                    <div class="player-header">
+                        <span class="pos-tag">${p.pos}</span>
+                        <span class="player-name">${p.name}</span>
+                    </div>
+                    <div class="player-stats">
+                        <span>OFF: ${p.off}</span>
+                        <span>DEF: ${p.def}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Tactical Toggles
+        function setStrategy(stratType, element) {
+            state.currentStrategy = stratType;
+            document.querySelectorAll('.strat-btn').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        // Live App Logic & Sim Loop
+        function toggleSimulation() {
+            const btn = document.getElementById('sim-btn');
+            const badge = document.getElementById('status-disp');
+
+            if (state.isGameActive) {
+                state.isGameActive = false;
+                clearInterval(simInterval);
+                btn.innerText = "RUN SIMULATION";
+                btn.classList.remove('active');
+                badge.innerText = "PAUSED";
+                badge.classList.remove('live');
+            } else {
+                state.isGameActive = true;
+                simInterval = setInterval(runPossession, 600); // Ticks fast for mobile action
+                btn.innerText = "PAUSE SIMULATION";
+                btn.classList.add('active');
+                badge.innerText = "LIVE";
+                badge.classList.add('live');
+            }
+        }
+
+        function runPossession() {
+            if (state.timeRemaining <= 0) {
+                if (state.quarter < 4) {
+                    state.quarter++;
+                    state.timeRemaining = 720;
+                    logEvent(`--- Quarter ${state.quarter} Begins ---`);
+                    updateScoreboard();
+                } else {
+                    logEvent("--- Final Buzzer! Game Over. ---");
+                    toggleSimulation();
+                }
+                return;
+            }
+
+            // Time decay matrix
+            const elapsed = Math.floor(Math.random() * (24 - 12 + 1)) + 12;
+            state.timeRemaining = Math.max(0, state.timeRemaining - elapsed);
+
+            const isHomePossession = Math.random() > 0.5;
+            const avgOff = roster.reduce((acc, p) => acc + p.off, 0) / 5;
+            const avgDef = roster.reduce((acc, p) => acc + p.def, 0) / 5;
+
+            if (isHomePossession) {
+                let successChance = (avgOff / (avgOff + state.oppRating)) * 0.5;
+                if (state.currentStrategy === 'fastBreak') successChance += 0.05;
+                if (state.currentStrategy === 'paint Focus') successChance += 0.03;
+
+                const shooter = roster[Math.floor(Math.random() * roster.length)].name;
+
+                if (Math.random() < successChance) {
+                    const points = Math.random() > 0.7 ? 3 : 2;
+                    state.homeScore += points;
+                    logEvent(`${shooter) drains a ${points}-pointer!`);
+                } else {
+                    logEvent(`${shooter} misses the bucket. Rim out.`);
+                }
+            } else {
+                let stopChance = (avgDef / (avgDef + state.oppRating)) * 0.5;
+                if (state.currentStrategy === 'lockdown') stopChance += 0.07;
+
+                if (Math.random() > stopChance) {
+                    const points = Math.random() > 0.8 ? 3 : 2;
+                    state.awayScore += points;
+                    logEvent(`Opponent breaks through for a ${points}-pt conversion.`);
+                } else {
+                    logEvent(`Shutdown defense! Turn over forced.`);
+                }
+            }
+
+            updateScoreboard();
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateScoreboard() {
+            document.getElementById('home-score').innerText = state.homeScore;
+            document.getElementById('away-score').innerText = state.awayScore;
+            document.getElementById('quarter-disp').innerText = `Q${state.quarter}`;
+            document.getElementById('time-disp').innerText = formatTime(state.timeRemaining);
+        }
+
+        function logEvent(msg) {
+            const feed = document.getElementById('feed-container');
+            const timeStr = formatTime(state.timeRemaining);
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerText = `[${timeStr}] ${msg}`;
+            
+            feed.insertBefore(entry, feed.firstChild);
+        }
+
+        function resetGame() {
+            if (state.isGameActive) toggleSimulation();
+            state.homeScore = 0;
+            state.awayScore = 0;
+            state.quarter = 1;
+            state.timeRemaining = 720;
+            updateScoreboard();
+            document.getElementById('feed-container').innerHTML = `<div class="log-entry">Game reset. Set strategy and restart.</div>`;
+        }
+
+        // Initialize App
+        renderRoster();
+        updateScoreboard();
+    </script>
+</body>
+</html>
